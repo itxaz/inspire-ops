@@ -5,25 +5,31 @@ A full-featured open-source CRM built with React. Includes 15 modules:
 
 ---
 
-## ⚡ Deploy to Vercel in 3 Steps
+## ⚡ Deploy the frontend to Netlify in 3 Steps
 
-### Option A — One-Click (Easiest)
-1. Push this folder to a GitHub repo (see below)
-2. Go to [vercel.com](https://vercel.com) → **Add New Project**
-3. Import your GitHub repo → click **Deploy**
+### Option A — Git-based (Easiest)
+1. Push this repo to GitHub (see below)
+2. Go to [netlify.com](https://netlify.com) → **Add new site → Import an existing project**
+3. Pick the repo → Netlify reads `netlify.toml` (build `npm run build`, publish `dist`) → **Deploy**
 
-Vercel auto-detects Vite/React. No config needed. Done! 🎉
+`netlify.toml` already configures the SPA fallback and asset caching. Done! 🎉
 
 ---
 
-### Option B — Vercel CLI
+### Option B — Netlify CLI
 ```bash
-npm install -g vercel
+npm install -g netlify-cli
 cd opencrm
 npm install
-vercel
+netlify deploy --build --prod
 ```
-Follow the prompts — it deploys in ~60 seconds.
+
+> **Note — this deploys the frontend only.** The Inspire CRM API (`server/`) is a long-lived
+> Node + Postgres service and is **not** hosted on Netlify (nor Vercel) — both are serverless/static
+> platforms. Run the API on a container host (Railway / Render / Fly.io) with managed Postgres +
+> Redis, and point the SPA at it via `VITE_API_URL` (CORS is enabled) or the `/api/*` proxy redirect
+> in `netlify.toml`. See [`docs/inspire-crm-architecture.md`](docs/inspire-crm-architecture.md) for
+> the deployment topology and rationale.
 
 ---
 

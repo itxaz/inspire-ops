@@ -120,6 +120,25 @@ flowchart TB
 | **Statement generator** | Worker + PDF renderer + email | Builds monthly agent payout statements, renders PDF, emails + posts to agent portal. |
 | **Auth** | JWT access tokens + rotating refresh sessions | RBAC across four roles (below). Replaces the current plaintext-localStorage credential scheme. |
 
+### Deployment topology
+
+The two halves of the system deploy to different kinds of platform — this is deliberate, and the
+reason "host it on Netlify/Vercel" only applies to the frontend.
+
+| Layer | Host | Why |
+|---|---|---|
+| **Frontend SPA** | **Netlify** (static + global CDN); config in `netlify.toml` | Pure static Vite build. CDN delivery, instant rollbacks, SPA fallback + asset caching. Vercel works identically; Netlify chosen here. |
+| **API + workers** | **Container host** (Railway / Render / Fly.io), horizontally scaled | Persistent process: pooled DB connections, RLS transactions, and long-running/bursty batch jobs (parsing, statement runs, Phase 5 portal bots) that do **not** fit serverless function time limits. |
+| **Database** | **Managed Postgres** (Neon / RDS / Crunchy) + PgBouncer | Bounded, pooled connections; read replicas + partitioning as tenants scale to national volume (see §9). |
+| **Queue / cache** | **Managed Redis** (e.g. Upstash) | BullMQ job queue + hot-path cache. |
+
+> **Why not fully-serverless (Netlify/Vercel Functions)?** A commission engine needs persistent
+> pooled DB access and heavy batch/worker workloads. On serverless you hit connection storms (each
+> function instance opens DB connections), function execution-time limits on parse/statement jobs,
+> and cold-start latency on the hot path — and you'd end up running a container for the workers
+> anyway. The SPA stays on Netlify; the API runs as a container. The SPA reaches the API via
+> `VITE_API_URL` (CORS-enabled) or a Netlify `/api/*` proxy redirect.
+
 ---
 
 ## 3. Multi-Tenancy & Security

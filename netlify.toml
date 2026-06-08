@@ -1,0 +1,32 @@
+# Netlify deployment for the Inspire CRM frontend (Vite/React SPA).
+# The backend API is NOT hosted here — it runs as a long-lived container
+# (Railway/Render/Fly) with managed Postgres + Redis. See docs/inspire-crm-architecture.md.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Proxy API calls to the container-hosted backend so the SPA can call it same-origin.
+# Set API_URL via a Netlify build/edge env var, or replace the placeholder below.
+# (Netlify does not interpolate env vars into `to`, so set the real URL here per site,
+#  or have the SPA call the API directly via VITE_API_URL with CORS — already enabled.)
+# [[redirects]]
+#   from = "/api/*"
+#   to = "https://your-api-host.example.com/:splat"
+#   status = 200
+#   force = true
+
+# SPA fallback: serve index.html for client-side routes (mirrors the old vercel.json rewrite).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Long-lived caching for fingerprinted assets (mirrors the old vercel.json header).
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
