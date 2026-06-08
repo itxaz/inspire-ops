@@ -1,54 +1,53 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { login as apiLogin, logout as apiLogout, tokens, api } from "./lib/api.js";
+import CommissionHub from "./modules/CommissionHub.jsx";
 
 // ============================================================
-// AUTH STORE — persists to localStorage
+// LEGACY CLIENT STORE (ClientsModule still uses localStorage)
 // ============================================================
-const ADMIN_CREDENTIALS = { username: "admin", password: "admin123" };
-
 const getClients = () => {
   try { return JSON.parse(localStorage.getItem("opencrm_clients") || "[]"); } catch { return []; }
 };
 const saveClients = (clients) => localStorage.setItem("opencrm_clients", JSON.stringify(clients));
 
-const getSession = () => {
-  try { return JSON.parse(sessionStorage.getItem("opencrm_session") || "null"); } catch { return null; }
-};
-const saveSession = (s) => s ? sessionStorage.setItem("opencrm_session", JSON.stringify(s)) : sessionStorage.removeItem("opencrm_session");
+// Map API user object to the shape the rest of the UI expects.
+const shapeSession = (user) => ({
+  id: user.sub,
+  agencyId: user.agencyId,
+  apiRole: user.role,                                             // full API role string
+  role: ["itx_admin", "agency_admin"].includes(user.role) ? "admin" : user.role,
+  agentId: user.agentId,
+  name: user.email ?? "User",
+  modules: ["itx_admin", "agency_admin", "agency_staff"].includes(user.role)
+    ? null  // null = all modules
+    : ["commissions"],
+});
 
 // ============================================================
 // LOGIN SCREEN
 // ============================================================
 const LoginScreen = ({ onLogin }) => {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
-    setTimeout(() => {
-      // Check admin
-      if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-        const session = { role: "admin", username: "admin", name: "Admin", id: "admin" };
-        saveSession(session);
-        onLogin(session);
-        return;
+    try {
+      const user = await apiLogin(email, password);
+      onLogin(shapeSession({ ...user, email }));
+    } catch (err) {
+      if (err.status === 401) {
+        setError("Invalid email or password");
+      } else {
+        setError("Cannot reach the API — is the server running?");
       }
-      // Check clients
-      const clients = getClients();
-      const client = clients.find(c => c.username === username && c.password === password && c.status === "active");
-      if (client) {
-        const session = { role: "client", username: client.username, name: client.name, id: client.id, businessName: client.businessName, modules: client.modules };
-        saveSession(session);
-        onLogin(session);
-        return;
-      }
-      setError("Invalid username or password");
       setLoading(false);
-    }, 600);
+    }
   };
 
   return (
@@ -89,8 +88,8 @@ const LoginScreen = ({ onLogin }) => {
         <div style={{ background: "var(--surface)", border: "1px solid var(--border2)", borderRadius: 20, padding: 32, boxShadow: "0 24px 64px #0008" }}>
           <form onSubmit={handleLogin}>
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text2)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Username</label>
-              <input value={username} onChange={e => setUsername(e.target.value)} placeholder="Enter username" autoFocus required/>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text2)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Email</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@agency.com" autoFocus required/>
             </div>
             <div style={{ marginBottom: 20, position: "relative" }}>
               <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text2)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px" }}>Password</label>
@@ -114,8 +113,12 @@ const LoginScreen = ({ onLogin }) => {
             </button>
           </form>
           <div style={{ marginTop: 20, padding: "14px", background: "var(--surface2)", borderRadius: 10, fontSize: 12, color: "var(--text3)" }}>
-            <div style={{ fontWeight: 600, color: "var(--text2)", marginBottom: 4 }}>Demo Admin Login</div>
-            <div>Username: <span style={{ color: "var(--accent)" }}>admin</span> · Password: <span style={{ color: "var(--accent)" }}>admin123</span></div>
+            <div style={{ fontWeight: 600, color: "var(--text2)", marginBottom: 6 }}>Demo Logins (password: <span style={{ color: "var(--accent)" }}>password123</span>)</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              <div>Agency admin: <span style={{ color: "var(--accent)" }}>admin@demo.test</span></div>
+              <div>Agent portal: <span style={{ color: "var(--accent)" }}>jane@demo.test</span></div>
+              <div>ITX super-admin: <span style={{ color: "var(--accent)" }}>itx@inspirecrm.test</span></div>
+            </div>
           </div>
         </div>
       </div>
@@ -127,6 +130,7 @@ const LoginScreen = ({ onLogin }) => {
 // CLIENT ACCESS MANAGEMENT MODULE (admin only)
 // ============================================================
 const AVAILABLE_MODULES = [
+  { id: "commissions", label: "Commission Hub", color: "#f7c94f" },
   { id: "dashboard", label: "Dashboard", color: "#4f8ef7" },
   { id: "crm", label: "CRM", color: "#7c6af7" },
   { id: "sales", label: "Sales", color: "#3ecf8e" },
@@ -690,6 +694,7 @@ const useStore = () => {
 // ============================================================
 const Sidebar = ({ active, setActive, collapsed, setCollapsed, session, onLogout, allowedModules }) => {
   const allModules = [
+    { id: "commissions", label: "Commission Hub", icon: "accounting", color: "#f7c94f" },
     { id: "dashboard", label: "Dashboard", icon: "dashboard", color: "#4f8ef7" },
     { id: "crm", label: "CRM", icon: "crm", color: "#7c6af7" },
     { id: "sales", label: "Sales", icon: "sales", color: "#3ecf8e" },
@@ -707,7 +712,7 @@ const Sidebar = ({ active, setActive, collapsed, setCollapsed, session, onLogout
     { id: "whatsapp", label: "WhatsApp", icon: "whatsapp", color: "#25d366" },
   ];
 
-  // Admin gets all modules + Clients management
+  // Admin gets all modules + Clients management; agents get only their allowed set.
   const modules = session?.role === "admin"
     ? [...allModules, { id: "clients", label: "Client Access", icon: "crm", color: "#f7934f" }]
     : allModules.filter(m => allowedModules?.includes(m.id));
@@ -1767,28 +1772,33 @@ const WhatsAppModule = ({ data }) => {
 // MAIN APP
 // ============================================================
 export default function App() {
-  const [session, setSession] = useState(() => getSession());
-  const [active, setActive] = useState("dashboard");
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [active, setActive] = useState("commissions");
   const [collapsed, setCollapsed] = useState(false);
   const { data, update } = useStore();
 
-  const handleLogin = (s) => {
-    setSession(s);
-    setActive(s.role === "admin" ? "dashboard" : (s.modules?.[0] || "dashboard"));
-  };
+  // On mount: if a stored access token exists, validate it and restore the session.
+  useEffect(() => {
+    if (!tokens.access) { setAuthLoading(false); return; }
+    api("/auth/me")
+      .then(({ user }) => { setSession(shapeSession(user)); setActive("commissions"); })
+      .catch(() => { apiLogout(); })
+      .finally(() => setAuthLoading(false));
+  }, []);
 
-  const handleLogout = () => {
-    saveSession(null);
-    setSession(null);
-    setActive("dashboard");
-  };
+  const handleLogin = (s) => { setSession(s); setActive("commissions"); };
 
+  const handleLogout = () => { apiLogout(); setSession(null); };
+
+  if (authLoading) return <><GlobalStyle/><div style={{ height: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4f8ef7" strokeWidth="2.5" style={{ animation: "spin 1s linear infinite" }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></div></>;
   if (!session) return <><GlobalStyle/><LoginScreen onLogin={handleLogin}/></>;
 
   // Filter modules for clients
   const allowedModules = session.role === "admin" ? null : session.modules;
 
   const allModuleMap = {
+    commissions: <CommissionHub session={session}/>,
     dashboard: <Dashboard data={data}/>,
     crm: <CRMModule data={data} update={update}/>,
     sales: <SalesModule data={data}/>,

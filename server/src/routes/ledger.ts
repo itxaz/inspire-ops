@@ -97,4 +97,25 @@ export async function ledgerRoutes(app: FastifyInstance): Promise<void> {
       return { status: result.status, paidAmount: result.paidAmount, exceptions: result.exceptions };
     });
   });
+
+  // Resolve / accept / dispute an exception.
+  const resolveSchema = z.object({
+    status: z.enum(['resolved', 'accepted', 'disputed', 'investigating']),
+    note: z.string().optional(),
+  });
+
+  app.patch('/exceptions/:id', { preHandler: requireRole('agency_admin', 'agency_staff') }, async (req, reply) => {
+    const params = parse(z.object({ id: z.string().uuid() }), req.params, reply);
+    const body = parse(resolveSchema, req.body, reply);
+    if (!params || !body) return;
+    return withTenant(tenantContext(req), async (c) => {
+      const { rowCount } = await c.query(
+        `UPDATE reconciliation_exceptions SET status = $2, note = COALESCE($3, note)
+         WHERE id = $1`,
+        [params.id, body.status, body.note ?? null],
+      );
+      if (!rowCount) return reply.code(404).send({ error: 'exception_not_found' });
+      return { id: params.id, status: body.status };
+    });
+  });
 }
