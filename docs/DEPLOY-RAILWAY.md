@@ -1,5 +1,20 @@
 # Deploying Inspire CRM on Railway (single platform)
 
+> **Run it locally first.** Before deploying, smoke-test the whole stack with Docker Compose:
+>
+> ```bash
+> docker compose up --build                  # Postgres + API (auto-migrates) + SPA
+> docker compose run --rm api npm run seed    # one-time demo data
+> open http://localhost:8080                  # SPA → API on :4000
+> ```
+>
+> Demo logins (`password123`): `admin@demo.test` (agency admin), `jane@demo.test` (agent
+> portal), `itx@inspirecrm.test` (ITX super-admin). The Compose topology mirrors Railway:
+> an owner DB role runs migrations/login, a bootstrapped `inspire_app` role serves
+> tenant requests under RLS. This has been verified end-to-end — auth, the CSV
+> ingest → reconcile → exception pipeline, agent statement generation, agent RLS
+> isolation, and the premium-tier gate all pass against a real Postgres.
+
 One Railway **project** hosts all four pieces — the API container, the static SPA, managed
 **Postgres**, and managed **Redis** — replacing the Netlify + container-host + Redis-provider split.
 Services reference each other's variables, so connection strings resolve automatically.

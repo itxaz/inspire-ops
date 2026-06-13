@@ -1,0 +1,64 @@
+# Local development stack — Postgres + API + SPA in one command.
+# Mirrors the Railway topology (managed Postgres + api container + web container)
+# so you can smoke-test the full system before deploying.
+#
+#   docker compose up --build
+#   docker compose run --rm api npm run seed   # one-time demo data
+#   open http://localhost:8080                 # SPA  (api on :4000)
+#
+# Demo logins (password123): admin@demo.test · jane@demo.test · itx@inspirecrm.test
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: inspire           # owner role: runs migrations, login, provisioning
+      POSTGRES_PASSWORD: ownerpw
+      POSTGRES_DB: inspire_crm
+    ports:
+      - "5432:5432"
+    volumes:
+      - inspire_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inspire -d inspire_crm"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: "4000"
+      HOST: 0.0.0.0
+      CORS_ORIGIN: http://localhost:8080
+      # Owner connection (POSTGRES_USER above) — bypasses RLS for migrations/login.
+      DATABASE_URL: postgres://inspire:ownerpw@db:5432/inspire_crm
+      # Runtime connection — RLS-subject role, bootstrapped on first migrate.
+      APP_DATABASE_URL: postgres://inspire_app:apppw@db:5432/inspire_crm
+      BOOTSTRAP_APP_ROLE: "true"
+      JWT_SECRET: local-dev-secret-change-me
+      # ANTHROPIC_API_KEY: sk-...   # optional: enables Claude parse fallback
+    ports:
+      - "4000:4000"
+    # Run migrations (creates inspire_app + schema + RLS) then start the API.
+    command: sh -c "npm run migrate && npm start"
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        VITE_API_URL: http://localhost:4000
+    depends_on:
+      - api
+    environment:
+      PORT: "8080"
+    ports:
+      - "8080:8080"
+
+volumes:
+  inspire_pgdata:
