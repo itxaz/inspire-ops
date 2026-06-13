@@ -16,6 +16,7 @@
     "test": "tsx --test src/**/*.test.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.104.1",
     "@fastify/cors": "^9.0.1",
     "argon2": "^0.41.1",
     "dotenv": "^16.4.5",

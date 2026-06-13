@@ -12,6 +12,8 @@ import { uploadRoutes } from './routes/uploads.js';
 import { mappingProfileRoutes } from './routes/mappingProfiles.js';
 import { importRoutes } from './routes/imports.js';
 import { ledgerRoutes } from './routes/ledger.js';
+import { statementRoutes } from './routes/statements.js';
+import { reserveRoutes } from './routes/reserves.js';
 
 export function buildApp() {
   const app = Fastify({ logger: true });
@@ -33,6 +35,8 @@ export function buildApp() {
   app.register(mappingProfileRoutes);
   app.register(importRoutes);
   app.register(ledgerRoutes);
+  app.register(statementRoutes);
+  app.register(reserveRoutes);
 
   return app;
 }

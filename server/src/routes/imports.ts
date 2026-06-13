@@ -4,6 +4,7 @@ import { withTenant } from '../db.js';
 import { authenticate, requireRole, tenantContext } from '../auth/context.js';
 import { parse, z } from '../http.js';
 import { parseCsv, suggestMapping, normalizeRows, type FieldMap, type NormalizedLine } from '../domain/parse.js';
+import { maybeParseWithClaude } from '../domain/parse-ai.js';
 import { reconcile } from '../domain/reconcile.js';
 import { round2 } from '../domain/commission.js';
 
@@ -61,7 +62,16 @@ export async function importRoutes(app: FastifyInstance): Promise<void> {
     if (!body) return;
 
     const { rows: csvRows } = parseCsv(body.csvText);
-    const norm = normalizeRows(csvRows, body.fieldMap as FieldMap);
+    const normBase = normalizeRows(csvRows, body.fieldMap as FieldMap);
+    // If confidence is below threshold and ANTHROPIC_API_KEY is set, use Claude.
+    const { items: finalItems, usedAi, aiTokens } = await maybeParseWithClaude(
+      normBase.items, normBase.confidence, body.csvText,
+    );
+    const norm = usedAi
+      ? { ...normBase, items: finalItems, total: finalItems.length,
+          flagged: finalItems.filter(i => i.flagged).length,
+          valid: finalItems.filter(i => !i.flagged).length }
+      : normBase;
 
     return withTenant(tenantContext(req), async (c) => {
       // 1. Upload record (raw bytes would live in object storage; inline for now).
@@ -120,6 +130,8 @@ export async function importRoutes(app: FastifyInstance): Promise<void> {
         rowsTotal: norm.total,
         rowsFlagged: norm.flagged,
         confidence: norm.confidence,
+        usedAi,
+        aiTokens: aiTokens ?? null,
         ...outcome,
       });
     });
