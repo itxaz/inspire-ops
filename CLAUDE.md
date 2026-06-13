@@ -157,3 +157,7 @@ Light theme. CSS variables defined in two places in `src/App.jsx` (login screen 
 - ~$200K/yr → **~$400K–$1M**
 
 **Biggest value levers:** (1) convert the two clients to signed, paying, multi-year contracts; (2) reduce key-person dependency (docs, tests, a second person who knows the system); (3) reduce customer concentration (two customers = high risk — losing one loses ~half the business). Commission systems are sticky once they're the source of truth, which supports retention.
+
+## Competitive positioning
+
+See `docs/competitive-analysis.md` for the full breakdown. Summary: Inspire CRM is a **back-office, vertical** product (commission reconciliation + agent transparency for transit insurance). Most insurtech tools we get compared to — e.g. **Gail (meetgail.com)**, an AI front-office assistant that handles calls/quoting/service — solve a *different* problem and are **complementary, not direct competitors**. Moat = depth in the commission/transit niche.
