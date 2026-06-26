@@ -158,6 +158,19 @@ Light theme. CSS variables defined in two places in `src/App.jsx` (login screen 
 
 **Biggest value levers:** (1) convert the two clients to signed, paying, multi-year contracts; (2) reduce key-person dependency (docs, tests, a second person who knows the system); (3) reduce customer concentration (two customers = high risk — losing one loses ~half the business). Commission systems are sticky once they're the source of truth, which supports retention.
 
+## Architecture diagram — mandatory version tracking
+
+The file `docs/architecture.drawio` is the platform's living architecture diagram, shared between Santiago and Josue. **Every code change that affects architecture, infrastructure, API surface, database schema, or module structure MUST include an update to the draw.io diagram before the work is considered complete.**
+
+After making code changes:
+1. Open `docs/architecture.drawio` and update the affected page(s)
+2. Add a row to the **version tracking table** on Page 0 (Build, Date, Author, What Changed)
+3. Commit the updated `.drawio` file in the same commit or PR as the code change
+
+Pages: 0 (System Overview + version log), 1 (Layer 1: Data & Tenancy), 2 (Layer 2: Front Office), 3 (Layer 3: Insurance Vertical), 4 (Deploy & Infrastructure).
+
+This produces a git-versioned change trail of every architectural decision — a prerequisite for SOC 2 Type II evidence (change management, asset inventory, and risk assessment controls).
+
 ## Competitive positioning
 
 See `docs/competitive-analysis.md` for the full breakdown. Summary: Inspire OPs is a **back-office, vertical** product (commission reconciliation + agent transparency for transit insurance). Most insurtech tools we get compared to — e.g. **Gail (meetgail.com)**, an AI front-office assistant that handles calls/quoting/service — solve a *different* problem and are **complementary, not direct competitors**. Moat = depth in the commission/transit niche.
