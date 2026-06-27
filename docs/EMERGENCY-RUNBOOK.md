@@ -1,19 +1,19 @@
 # Inspire OPs — Emergency Runbook
 
 > **Audience:** Josue (or anyone who needs to operate this system without Santiago).
-> Last updated: 2026-06-26.
+> Last updated: 2026-06-27.
 
 ## Quick reference
 
 | What | Where |
 |---|---|
-| **Railway project** | `Inspire Operations Platform` — [railway.com/dashboard](https://railway.com/dashboard) (login: Santiago's Railway account) |
+| **Railway project** | `Inspire Operations Platform` — [railway.com/dashboard](https://railway.com/dashboard) (Santiago + Josue both have admin access) |
 | **GitHub repo** | `itxaz/inspire-ops` (private) |
 | **Local clone** | `/Users/itxaz/Documents/opencrm` (directory name kept to avoid breaking tooling) |
 | **API domain** | `api-production-35f2.up.railway.app` |
 | **SPA domain** | check Railway dashboard → web service → Settings → Networking |
 | **Health check** | `GET https://api-production-35f2.up.railway.app/health` → `{"ok":true}` |
-| **Hobby plan** | $5/month, no BAA, no SLA |
+| **Pro plan** | $20/month, no BAA, no SLA |
 
 ## Services (4 total on Railway)
 
@@ -39,7 +39,7 @@ Railway project: Inspire Operations Platform
 | `VITE_API_URL` | Railway → web service → Variables (api service's public URL, build-time) |
 | `ANTHROPIC_API_KEY` | Railway → api service → Variables (optional, enables Claude CSV parsing fallback) |
 | GitHub repo access | Santiago's GitHub account — Josue is a collaborator |
-| Railway dashboard access | Santiago's Railway account — add Josue as a team member for direct access |
+| Railway dashboard access | Both Santiago and Josue have admin access (Pro plan, upgraded 2026-06-27) |
 
 **To get database connection string for direct access:**
 Railway dashboard → Postgres service → Connect tab → copy the connection URL.
